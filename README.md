@@ -6,6 +6,7 @@ A repository of algorithms used for artificial intelligence.
 ### Neural Network Version 2
 * Made with NO external libraries.
 * Uses standard lists as its primary iterable for number manipulation.
+* Uses the sigmoid function as its activation function (future versions will have more options).
 * Minimally object oriented (future versions will be).
 * Freely adjustable number of:
   * inputs
