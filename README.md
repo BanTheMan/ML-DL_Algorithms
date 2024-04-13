@@ -19,3 +19,4 @@ A repository of algorithms used for artificial intelligence.
   * Averages a 0.25 MSE with correct model shape to fit data
   * It's best performance is on par with a single output model, but tends to swing heavily
   * Noticed behavior at .25 MSE would vary from losing its accuracy on a pattern when reversed to being uncertain (50/50).
+* Evaluation functions used to mitigate its unpredictability by using the most accurate version found over many iterations.
