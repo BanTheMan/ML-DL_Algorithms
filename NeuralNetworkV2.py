@@ -65,7 +65,7 @@ class NeuralNetwork:
 
     def __init__(self, num_inputs, num_hidden_layers, neurons_per_hidden_layer, num_outputs, normalized_output=True):
 
-        # Defined When Used (all lists)
+        # Defined When Used
         self.weighted_sums = None
         self.neurons = None
         self.cost_to_output_partials = None
@@ -73,6 +73,11 @@ class NeuralNetwork:
         self.weight_partials = None
         self.bias_partials = None
         self.neuron_partials = None
+        self.final_loss = None
+        self.features = None
+        self.labels = None
+        self.learn_rate = None
+        self.epochs = None
 
         self.num_inputs = num_inputs
         self.num_hidden_layers = num_hidden_layers
@@ -100,7 +105,7 @@ class NeuralNetwork:
         input_layer_connections = []
         # weights connecting inputs to neurons in first layer
         for neuron in range(self.INPUT_TO_LAYER_CONNECTIONS):
-            input_layer_connections.append(random.random()/10)
+            input_layer_connections.append(random.random() / 10)
         self.weights.append(input_layer_connections)
 
         if num_hidden_layers > 1:
@@ -108,13 +113,13 @@ class NeuralNetwork:
                 hidden_layer_connections = []
                 # weights connecting the neurons between each hidden layer
                 for neuron in range(self.LAYER_TO_LAYER_CONNECTIONS):
-                    hidden_layer_connections.append(random.random()/10)
+                    hidden_layer_connections.append(random.random() / 10)
                 self.weights.append(hidden_layer_connections)
 
         output_layer_connections = []
         # weights connecting neurons of the last layer to the output neurons
         for neuron in range(self.LAYER_TO_OUTPUT_CONNECTIONS):
-            output_layer_connections.append(random.random()/10)
+            output_layer_connections.append(random.random() / 10)
         self.weights.append(output_layer_connections)
 
         # biases
@@ -128,12 +133,12 @@ class NeuralNetwork:
         for layer in range(num_hidden_layers):
             bias_per_activation = []
             for bias in range(neurons_per_hidden_layer):  # create a bias for each neuron
-                bias_per_activation.append(random.random()/10)
+                bias_per_activation.append(random.random() / 10)
             self.biases.append(bias_per_activation)
 
         bias_per_output_activation = []
         for bias in range(num_outputs):  # create a bias for each output neuron
-            bias_per_output_activation.append(random.random()/10)
+            bias_per_output_activation.append(random.random() / 10)
         self.biases.append(bias_per_output_activation)
 
         self.TOTAL_LAYERS = len(self.weights)
@@ -159,8 +164,8 @@ class NeuralNetwork:
         cost = 0
         for row in range(len(output)):
             if self.num_outputs > 1:
-                for i in range(len(output[row])):
-                    cost += (output[row][i] - desired_output[row][i]) ** 2
+                for output_index in range(len(output[row])):
+                    cost += (output[row][output_index] - desired_output[row][output_index]) ** 2
             else:
                 cost += (output[row][0] - desired_output[row]) ** 2
 
@@ -195,25 +200,25 @@ class NeuralNetwork:
             layer_sums = []
             layer_neurons = []
             sum_connections = 0
-            i = 1  # iterate through connections per neuron to previous layer
+            connection_index = 1  # iterate through connections per neuron to previous layer
             n = 0
             for connection in self.weights[layer]:
                 if layer == 0:  # input --> first hidden layer connection
-                    sum_connections += connection * inputs[i - 1]  # add all weights * inputs
-                    if i == self.num_inputs:
+                    sum_connections += connection * inputs[connection_index - 1]  # add all weights * inputs
+                    if connection_index == self.num_inputs:
                         # Calculate neuron activation from connections to previous layer
                         layer_sums.append(sum_connections + self.biases[layer][n])
                         neuron = sigmoid(sum_connections + self.biases[layer][n])  # sigmoid(z)
                         layer_neurons.append(neuron)
                         # Reset for next neuron
                         sum_connections = 0
-                        i = 1
+                        connection_index = 1
                         n += 1
                     else:
-                        i += 1
+                        connection_index += 1
                 else:
-                    sum_connections += connection * self.neurons[layer - 1][i - 1]
-                    if i == self.neurons_per_hidden_layer:
+                    sum_connections += connection * self.neurons[layer - 1][connection_index - 1]
+                    if connection_index == self.neurons_per_hidden_layer:
                         # Calculate neuron activation from connections to previous layer
                         layer_sums.append(sum_connections + self.biases[layer][n])
                         if layer == self.TOTAL_LAYERS - 1 and not self.normalized_output:  # omits sigmoid from output
@@ -223,16 +228,16 @@ class NeuralNetwork:
                         layer_neurons.append(neuron)
                         # Reset for next neuron
                         sum_connections = 0
-                        i = 1
+                        connection_index = 1
                         n += 1
                     else:
-                        i += 1
+                        connection_index += 1
             self.weighted_sums.append(layer_sums)
             self.neurons.append(layer_neurons)
 
         return self.neurons[len(self.neurons) - 1]
 
-    def train(self, features, labels, learn_rate=0.1, epochs=1000):
+    def train(self, features, labels, learn_rate=0.1, epochs=1000, evaluation=False, recreation=False):
         """
         Use forward propagation to get a current state of cost
         Use back propagation to find the sensitivity of the cost function to every component of the network
@@ -242,13 +247,21 @@ class NeuralNetwork:
          - biases
          Adjust the weights and biases along the gradient descent to decrease cost
         :param features: list of n samples
-        :param labels: a list with n elements of correct answers to data
+        :param labels: list of n correct answers to the training samples
         :param learn_rate: a float value.
                            controls step size during gradient descent
                            (how quickly the loss decreases)
         :param epochs: integer
                        the number of times to loop through the entire dataset
+        :param evaluation: Determines if the training is used to evaluate a number of versions of the model
+        :param recreation: Determines if the training is used to recreate an evaluated model
         """
+
+        # Stored for used_evaluated_model() function
+        self.features = features
+        self.labels = labels
+        self.learn_rate = learn_rate
+        self.epochs = epochs
 
         # Training loop
         for epoch in range(epochs):
@@ -401,12 +414,214 @@ class NeuralNetwork:
             # --- Calculate total loss at the end of each epoch
             # every 10 epochs in this case
             # Shows the user its progress
-            if epoch % 10 == 0:
+            if epoch % 10 == 0 and not evaluation:
                 check_predictions = []
                 for row in features:
                     check_predictions.append(self.predict(row))
                 loss = self.cost_func(labels, check_predictions, len(features))
                 print("Epoch %d loss: %.3f" % (epoch, loss))
+
+            if epoch == (epochs - 1) and evaluation:
+                check_predictions = []
+                for row in features:
+                    check_predictions.append(self.predict(row))
+                self.final_loss = self.cost_func(labels, check_predictions, len(features))
+            elif epoch == (epochs - 1) and recreation:
+                print("Recreation complete!")
+
+    def evaluate_model(self, evaluation_features, evaluation_labels, evaluation_learn_rate=0.1,
+                       evaluation_epochs=1000, iterations=20):
+        """
+        Iterate through a number of versions of the model trained on data to find
+        the best version based on its initial weights and biases and final loss value
+        :param evaluation_features: list of n training samples
+        :param evaluation_labels: list of n correct answers to the training samples
+        :param evaluation_learn_rate: a float value.
+                           controls step size during gradient descent
+                           (how quickly the loss decreases)
+        :param evaluation_epochs: integer
+                       the number of times to loop through the entire dataset
+        :param iterations: number of versions of the model to evaluate
+        :return: values for the weights and biases that result in the most accurate version found of the model
+        """
+
+        file_path = "optimal_model_csv.txt"
+        stored_model = self.reconstruct_model(file_path)
+
+        if stored_model is not None:
+            current_best_loss = float(stored_model[0])
+            current_best_weights = stored_model[1]
+            current_best_biases = stored_model[2]
+        else:
+            current_best_loss = None
+            current_best_weights = []
+            current_best_biases = []
+
+        # Evaluate a number of versions of the model and track its best results
+        for iteration in range(iterations):
+            print(f"Evaluating... {iteration}/{iterations}")
+            # Initialize and record state of weights and biases
+            self.__init__(self.num_inputs, self.num_hidden_layers, self.neurons_per_hidden_layer,
+                          self.num_outputs, self.normalized_output)
+            initial_weights = self.weights
+            initial_biases = self.biases
+
+            # Train model
+            self.train(evaluation_features, evaluation_labels, evaluation_learn_rate, evaluation_epochs, True)
+            # True argument tells the function to record the final loss for evaluation
+
+            if current_best_loss is None or self.final_loss < current_best_loss:
+                current_best_loss = self.final_loss
+                current_best_weights = initial_weights
+                current_best_biases = initial_biases
+
+        # Record best values:
+        with open(file_path, "w") as file:
+            file.write(f"{current_best_loss}\n")
+            print(f"write loss: {current_best_loss}")
+            for row in current_best_weights:
+                for weight in row:
+                    file.write(f"w, {weight}\n")
+            for row in current_best_biases:
+                for bias in row:
+                    file.write(f"b, {bias}\n")
+        file.close()
+
+    def reconstruct_model(self, file_path):
+        """
+        Retrieves information stored in a text file that
+        - contains the weights and biases that create the most accurate evaluation of the model
+        :return: the current best loss, weights, and biases
+        """
+
+        # Retrieve current best values
+        try:
+            # Attempt to open file
+            with open(file_path, "r") as file:
+                lines = file.readlines()
+                # First Line --> best previously recorded final loss value
+                # Lines starting with 'w, ' --> weights that produced loss value
+                # ----------------------------- each line is a single weight to avoid word wrapping
+                # Lines starting with 'b, ' --> biases that produced loss value
+                # ----------------------------- each line is a single bias to avoid word wrapping
+            file.close()
+
+            # Nothing stored
+            if len(lines) == 0:
+                return None
+
+            # Information stored
+            else:
+                # Initiate variables for tracking
+                first_layer_complete = False
+                middle_layers_complete = 0
+                last_layer_complete = False
+                bias_layers_complete = 0
+                output_biases_complete = False
+                value_index = 1
+                temporary_list = []
+                current_best_weights = []
+                current_best_biases = []
+                # Retrieve information
+                current_best_loss = lines[0]
+
+                for line in lines[1:]:
+                    info = line.split(', ')
+
+                    # Organize weights into their layers
+                    if info[0] == 'w':
+
+                        # Retrieve weights connecting the input(s) to the first layer of neurons
+                        if not first_layer_complete:
+                            temporary_list.append(float(info[1]))
+                            if value_index == self.INPUT_TO_LAYER_CONNECTIONS:
+                                current_best_weights.append(temporary_list)
+                                first_layer_complete = True
+                                temporary_list = []
+                                value_index = 1
+                            else:
+                                value_index += 1
+
+                        # Retrieve the weights connecting the previous layer of neurons to the next
+                        elif middle_layers_complete < self.num_hidden_layers-1:
+                            temporary_list.append(float(info[1]))
+                            if value_index == self.LAYER_TO_LAYER_CONNECTIONS:
+                                current_best_weights.append(temporary_list)
+                                middle_layers_complete += 1
+                                temporary_list = []
+                                value_index = 1
+                            else:
+                                value_index += 1
+
+                        # Retrieve the weights connecting the last layer of neurons to the output(s)
+                        elif not last_layer_complete:
+                            temporary_list.append(float(info[1]))
+                            if value_index == self.LAYER_TO_OUTPUT_CONNECTIONS:
+                                current_best_weights.append(temporary_list)
+                                last_layer_complete = True
+                                temporary_list = []
+                                value_index = 1
+                            else:
+                                value_index += 1
+
+                    # Organize biases into their layers
+                    elif info[0] == 'b':
+
+                        # Retrieve biases for each neuron in each layer
+                        if bias_layers_complete < self.num_hidden_layers:
+                            temporary_list.append(float(info[1]))
+                            if value_index == self.neurons_per_hidden_layer:
+                                current_best_biases.append(temporary_list)
+                                bias_layers_complete += 1
+                                temporary_list = []
+                                value_index = 1
+                            else:
+                                value_index += 1
+
+                        # Retrieve bias for each output
+                        elif not output_biases_complete:
+                            temporary_list.append(float(info[1]))
+                            if value_index == self.num_outputs:
+                                current_best_biases.append(temporary_list)
+                                output_biases_complete = True
+                                temporary_list = []
+                                value_index = 1
+                            else:
+                                value_index += 1
+
+                return [current_best_loss, current_best_weights, current_best_biases]
+
+        except FileNotFoundError:
+            print(f"The file '{file_path}' does not exist yet.")
+            # file not found
+
+            return None
+
+    def use_evaluated_model(self):
+        """
+        Recreates the most accurate model from the evaluate_model() function
+        Sets initial weights and biases then retrained to recreate result
+        """
+
+        # Retrieve best version of model
+        file_path = "optimal_model_csv.txt"
+        stored_model = self.reconstruct_model(file_path)
+
+        # Model does not exist
+        if stored_model is None:
+            print("No evaluated model available.")
+
+        # Model exists
+        else:
+            self.weights = stored_model[1]
+            self.biases = stored_model[2]
+
+            # Verify model is correct shape
+            if self.weights[0] == self.INPUT_TO_LAYER_CONNECTIONS and self.weights[
+                        1] == self.LAYER_TO_LAYER_CONNECTIONS and self.weights[-1]:
+                # Retrain model
+                print("Recreating Model...")
+                self.train(self.features, self.labels, self.learn_rate, self.epochs, False, True)
 
 
 # Two Example Uses:
@@ -461,11 +676,13 @@ y_labels2 = [
 network2 = NeuralNetwork(4, 3, 5, 2)
 # NeuralNetwork(num_inputs, num_hidden_layers, neurons_per_hidden_layer, num_outputs, normalized_output)
 print("\nTraining Second Neural Network...")
-network2.train(X_data2, y_labels2, 0.5, 4000)
-
+# Find most accurate version of the model out of 20 versions
+network2.evaluate_model(X_data2, y_labels2, 0.5, 4000)
+# Use most accurate version
+network2.use_evaluated_model()
 
 # Print results of first neural network
-print(f"""
+print("""
 First Neural Network:
 2 inputs
 1 hidden layer
@@ -486,9 +703,8 @@ option2 = [250, -375]  # no
 prediction = network1.predict(option2)
 print("Result 2: %.3f \nCorrect answer: 0 no" % prediction[0])
 
-
 # Print results of second neural network
-print(f"""
+print("""
 Second Neural Network:
 4 inputs
 3 hidden layers
@@ -497,6 +713,7 @@ Second Neural Network:
 normalized output
 0.5 step size (learning rate)
 4000 epochs (iterations over training data)
+evaluated and uses most accurate version
 1 = yes, 0 = no
 """)
 
