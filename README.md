@@ -16,5 +16,6 @@ A repository of algorithms used for artificial intelligence.
 * Complete with two examples of networks with different model and training settings.
 * Strongest with a single output (averaging a high accuracy of 0.004-0.000 loss).
 * Struggles with multiple outputs.
-  * Averages a 2.0 loss with correct model shape to fit data
-  * It's best performance is on par with a single output model
+  * Averages a 0.25 MSE with correct model shape to fit data
+  * It's best performance is on par with a single output model, but tends to swing heavily
+  * Noticed behavior at .25 MSE would vary from losing its accuracy on a pattern when reversed to being uncertain (50/50).
