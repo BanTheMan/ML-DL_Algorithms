@@ -136,7 +136,9 @@ class NeuralNetwork:
             bias_per_output_activation.append(random.random()/10)
         self.biases.append(bias_per_output_activation)
 
-    def cost_func(self, desired_output, output):
+        self.TOTAL_LAYERS = len(self.weights)
+
+    def cost_func(self, desired_output, output, num_samples):
         """
         Cost function
         Finds the difference between its outcome (y)
@@ -146,8 +148,11 @@ class NeuralNetwork:
 
         Cost = SIGMA (i=0 to n) ( (y - y-hat)^2 )
 
+        MSE (mean squared loss) = the average cost per sample
+        MSE = Cost / number of samples
         :param desired_output: list of label values
         :param output: list of predicted label values
+        :param num_samples: an integer represents the number of samples in the training data
         :return: float val of cost
         """
 
@@ -158,9 +163,10 @@ class NeuralNetwork:
                     cost += (output[row][i] - desired_output[row][i]) ** 2
             else:
                 cost += (output[row][0] - desired_output[row]) ** 2
-        print(f"cost: {cost}")
 
-        return cost
+        mse = cost / num_samples
+
+        return mse
 
     def predict(self, inputs):
         """
@@ -185,7 +191,7 @@ class NeuralNetwork:
         # the indices correlate to the indices of the neuron
 
         # Calculate weighted sums and neuron activations
-        for layer in range(len(self.weights)):  # for each layer from first hidden layer to output
+        for layer in range(self.TOTAL_LAYERS):  # for each layer from first hidden layer to output
             layer_sums = []
             layer_neurons = []
             sum_connections = 0
@@ -210,7 +216,7 @@ class NeuralNetwork:
                     if i == self.neurons_per_hidden_layer:
                         # Calculate neuron activation from connections to previous layer
                         layer_sums.append(sum_connections + self.biases[layer][n])
-                        if layer == len(self.weights) - 1 and not self.normalized_output:  # omits sigmoid from output
+                        if layer == self.TOTAL_LAYERS - 1 and not self.normalized_output:  # omits sigmoid from output
                             neuron = sum_connections + self.biases[layer][n]
                         else:
                             neuron = sigmoid(sum_connections + self.biases[layer][n])  # sigmoid(z)
@@ -226,7 +232,7 @@ class NeuralNetwork:
 
         return self.neurons[len(self.neurons) - 1]
 
-    def train(self, features, labels, learn_rate=0.1, epochs=300):
+    def train(self, features, labels, learn_rate=0.1, epochs=1000):
         """
         Use forward propagation to get a current state of cost
         Use back propagation to find the sensitivity of the cost function to every component of the network
@@ -295,9 +301,7 @@ class NeuralNetwork:
                 # - last list = the influence of each neuron in the first hidden layer on the next
                 # the indices of the partials correlate to indices of the neurons
 
-                num_layers = len(self.weights)
-
-                for layer in range(num_layers):
+                for layer in range(self.TOTAL_LAYERS):
                     partials_w = []
                     partials_b = []
                     partials_n = []
@@ -333,7 +337,7 @@ class NeuralNetwork:
                     # - Find the influence of the neuron on each of the next neurons times-
                     # - -the influence of the next neuron on the cost function
 
-                    reversed_layer = (num_layers - 1) - layer
+                    reversed_layer = (self.TOTAL_LAYERS - 1) - layer
                     next_layer = reversed_layer + 1
                     next_partials_layer = layer - 1
                     for neuron_index in range(len(self.neurons[reversed_layer])):
@@ -377,19 +381,19 @@ class NeuralNetwork:
 
                 # Adjust weights
                 # by the influence of the weight on its neuron * the influence of its neuron on the cost function
-                for layer in range(num_layers):
+                for layer in range(self.TOTAL_LAYERS):
                     for weight in range(len(self.weights[layer])):
                         neuron_index = weight % len(self.neurons[layer])
-                        reversed_layer = (num_layers - 1) - layer
+                        reversed_layer = (self.TOTAL_LAYERS - 1) - layer
                         neuron_partial = self.neuron_partials[reversed_layer][neuron_index]
                         weight_partial = self.weight_partials[layer][weight]
                         self.weights[layer][weight] -= learn_rate * neuron_partial * weight_partial
 
                 # Adjust biases
                 # by the influence of the bias on its neuron * the influence of its neuron on the cost function
-                for layer in range(num_layers):
+                for layer in range(self.TOTAL_LAYERS):
                     for bias in range(len(self.biases[layer])):
-                        reversed_layer = (num_layers - 1) - layer
+                        reversed_layer = (self.TOTAL_LAYERS - 1) - layer
                         neuron_partial = self.neuron_partials[reversed_layer][bias]
                         bias_partial = self.bias_partials[layer][bias]
                         self.biases[layer][bias] -= learn_rate * neuron_partial * bias_partial
@@ -401,9 +405,11 @@ class NeuralNetwork:
                 check_predictions = []
                 for row in features:
                     check_predictions.append(self.predict(row))
-                loss = self.cost_func(labels, check_predictions)
+                loss = self.cost_func(labels, check_predictions, len(features))
                 print("Epoch %d loss: %.3f" % (epoch, loss))
 
+
+# Two Example Uses:
 
 # Define dataset for first neural network
 X_data1 = [
