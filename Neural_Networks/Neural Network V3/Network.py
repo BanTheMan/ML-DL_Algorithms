@@ -132,12 +132,9 @@ class NeuralNetwork:
 
         return self.output
 
-    def set_prediction_meanings(self):
-        pass
-
     def predict(self, inputs):
         """
-        Retrieve and apply meaning to predictions
+        Run inputs through network and retrieve predictions
         :param inputs: a list of feature values
         :return: a list of float values
         """
