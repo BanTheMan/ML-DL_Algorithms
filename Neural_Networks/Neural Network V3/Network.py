@@ -115,6 +115,12 @@ class NeuralNetwork:
         """
         Feed inputs through the network
         """
+        # Ensure inputs are lists
+        if isinstance(inputs, list):
+            pass
+        else:
+            inputs = [inputs]
+        
         # Plug in input values
         for input_node, feature_value in zip(self.layers[0].nodes, inputs):
             input_node.activation = feature_value
