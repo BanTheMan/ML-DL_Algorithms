@@ -4,6 +4,7 @@ A repository of algorithms used for artificial intelligence.
 ## Current Projects in Repository:
 
 ### Neural Networks:
+(Versions 1-3 made before formal education)
 
 #### Neural Network Version 1
 * Simple neural network based off of a common tutorial.
